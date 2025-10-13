@@ -27,8 +27,8 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
     lastName: "",
     phoneNumber: "",
     email: "",
-    password: "",
-    confirmPassword: "",
+    // password: "",
+    // confirmPassword: "",
     city: "",
     agreeToTerms: false,
   });
@@ -86,7 +86,7 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
             <Text style={styles.subtitle}>Create your account to get started</Text>
           </View>
 
-          {/* Tabs */}
+          {/* Tabs
           <View style={styles.tabContainer}>
             <TouchableOpacity
               style={[
@@ -122,7 +122,7 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
                 Email
               </Text>
             </TouchableOpacity>
-          </View>
+          </View> */}
 
           {/* === PHONE SIGN UP === */}
           {activeTab === "phone" && (
@@ -163,6 +163,23 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
                         maxLength={10}
                         value={formData.phoneNumber}
                         onChangeText={(t) => handleInputChange("phoneNumber", t)}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Email</Text>
+                    <View style={styles.phoneRow}>
+                      {/* <View style={styles.countryCode}>
+                        <Text style={{ color: "#6b7280" }}>+91</Text>
+                      </View> */}
+                      <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        placeholder="Enter email"
+                        keyboardType="email"
+                        maxLength={10}
+                        value={formData.email}
+                        onChangeText={(t) => handleInputChange("email", t)}
                       />
                     </View>
                   </View>
@@ -219,7 +236,7 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
             </View>
           )}
 
-          {/* === EMAIL SIGN UP === */}
+          === EMAIL SIGN UP ===
           {activeTab === "email" && (
             <View style={styles.form}>
               <View style={styles.row}>
@@ -350,7 +367,7 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" },
+  container: { flex: 1, backgroundColor: "#f8fafc" ,paddingTop:10},
   logoContainer: { alignItems: "center", marginBottom: 20 },
   logoOuter: {
     width: 70,
