@@ -49,21 +49,9 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
     }
   };
 
-  const handleEmailSignUp = () => {
-    if (isEmailFormValid()) {
-      onSignUp();
-    }
-  };
 
-  const isEmailFormValid = () => {
-    return (
-      formData.firstName &&
-      formData.email &&
-      formData.password &&
-      formData.confirmPassword === formData.password &&
-      formData.agreeToTerms
-    );
-  };
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -85,44 +73,6 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
             <Text style={styles.title}>Join SuperApp!</Text>
             <Text style={styles.subtitle}>Create your account to get started</Text>
           </View>
-
-          {/* Tabs
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === "phone" && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab("phone")}
-            >
-              <Phone size={18} color={activeTab === "phone" ? "#007bff" : "#6b7280"} />
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "phone" && styles.activeTabText,
-                ]}
-              >
-                Phone
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === "email" && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab("email")}
-            >
-              <Mail size={18} color={activeTab === "email" ? "#007bff" : "#6b7280"} />
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "email" && styles.activeTabText,
-                ]}
-              >
-                Email
-              </Text>
-            </TouchableOpacity>
-          </View> */}
 
           {/* === PHONE SIGN UP === */}
           {activeTab === "phone" && (
@@ -236,115 +186,6 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
             </View>
           )}
 
-          === EMAIL SIGN UP ===
-          {activeTab === "email" && (
-            <View style={styles.form}>
-              <View style={styles.row}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>First Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="First name"
-                    value={formData.firstName}
-                    onChangeText={(t) => handleInputChange("firstName", t)}
-                  />
-                </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Last Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Last name"
-                    value={formData.lastName}
-                    onChangeText={(t) => handleInputChange("lastName", t)}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email"
-                  keyboardType="email-address"
-                  value={formData.email}
-                  onChangeText={(t) => handleInputChange("email", t)}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
-                <View style={styles.passwordRow}>
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder="Create password"
-                    secureTextEntry={!showPassword}
-                    value={formData.password}
-                    onChangeText={(t) => handleInputChange("password", t)}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color="#6b7280" />
-                    ) : (
-                      <Eye size={20} color="#6b7280" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Confirm Password</Text>
-                <View style={styles.passwordRow}>
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder="Confirm password"
-                    secureTextEntry={!showConfirmPassword}
-                    value={formData.confirmPassword}
-                    onChangeText={(t) => handleInputChange("confirmPassword", t)}
-                  />
-                  <TouchableOpacity
-                    onPress={() =>
-                      setShowConfirmPassword(!showConfirmPassword)
-                    }
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={20} color="#6b7280" />
-                    ) : (
-                      <Eye size={20} color="#6b7280" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-                {formData.password &&
-                  formData.confirmPassword &&
-                  formData.password !== formData.confirmPassword && (
-                    <Text style={styles.errorText}>Passwords don't match</Text>
-                  )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>City</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your city"
-                  value={formData.city}
-                  onChangeText={(t) => handleInputChange("city", t)}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  !isEmailFormValid() && styles.buttonDisabled,
-                ]}
-                onPress={handleEmailSignUp}
-                disabled={!isEmailFormValid()}
-              >
-                <Text style={styles.buttonText}>Create Account</Text>
-                <ArrowRight color="#fff" size={18} />
-              </TouchableOpacity>
-            </View>
-          )}
 
           {/* Already have account */}
           <View style={styles.signInContainer}>
