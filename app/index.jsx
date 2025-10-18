@@ -16,6 +16,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -35,14 +36,14 @@ import SignUpScreen from "./components/SignUpScreen";
 import SubscriptionsScreen from "./components/SubscriptionsScreen";
 import WelcomeScreen from "./components/WelcomeScreen";
 
-// === FOOD FLOW COMPONENTS ===
-import FoodCheckout from "./components/FoodCheckout";
-import FoodMenu from "./components/FoodMenu";
-import FoodRestaurants from "./components/FoodRestaurants";
-import FoodTracking from "./components/FoodTracking";
+// === FOOD FLOW ===
+import RestaurantList from "./components/food/RestaurantList";
+import FoodMenu from "./components/food/FoodMenu";
+import FoodCheckout from "./components/food/FoodCheckout";
+import FoodTracking from "./components/food/FoodTracking";
 
 export default function App() {
-  // ===== GLOBAL HOOKS =====
+  // ===== GLOBAL STATES =====
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(true);
   const [authScreen, setAuthScreen] = useState("welcome");
@@ -55,9 +56,6 @@ export default function App() {
   const [foodView, setFoodView] = useState("restaurants");
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [cart, setCart] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // === Coupon States ===
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
 
@@ -66,6 +64,7 @@ export default function App() {
     { id: "1", name: "Pizza Hut", cuisine: "Italian", rating: 4.3, deliveryTime: "25–30 min" },
     { id: "2", name: "Burger King", cuisine: "Fast Food", rating: 4.2, deliveryTime: "20–25 min" },
   ];
+
   const menuItems = [
     {
       id: "1",
@@ -105,7 +104,7 @@ export default function App() {
 
   const handleSignIn = async () => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 1200));
     setIsAuthenticated(true);
     setActiveScreen("home");
     setIsLoading(false);
@@ -113,7 +112,7 @@ export default function App() {
 
   const handleSignUp = async () => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 1500));
     setIsAuthenticated(true);
     setActiveScreen("home");
     setIsLoading(false);
@@ -126,9 +125,7 @@ export default function App() {
     setShowQRScanner(false);
   };
 
-  const handleNavigation = (screen) => setActiveScreen(screen);
-
-  // ===== FOOD FLOW HANDLERS =====
+  // ===== FOOD CART HANDLERS =====
   const addToCart = (item) => {
     setCart((prev) => {
       const existing = prev.find((c) => c.id === item.id);
@@ -149,27 +146,20 @@ export default function App() {
     );
   };
 
-  const getCartTotal = () =>
-    cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const getCartTotal = () => cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const getItemQuantity = (id) => cart.find((i) => i.id === id)?.quantity || 0;
 
-  const getItemQuantity = (id) => {
-    const item = cart.find((i) => i.id === id);
-    return item ? item.quantity : 0;
-  };
-
+  // ===== FOOD NAVIGATION =====
   const handleRestaurantClick = (r) => {
     setSelectedRestaurant(r);
     setFoodView("menu");
   };
-
   const handleCheckout = () => setFoodView("checkout");
-
   const handlePlaceOrder = () => {
     setAppliedCoupon(null);
-    setFoodView("tracking"); // ✅ Go to tracking map after order placed
-    setCart([]); // Clear cart
+    setCart([]);
+    setFoodView("tracking");
   };
-
   const handleFoodBack = () => {
     if (foodView === "tracking") setFoodView("checkout");
     else if (foodView === "checkout") setFoodView("menu");
@@ -177,24 +167,24 @@ export default function App() {
     else setActiveScreen("home");
   };
 
-  // ===== COUPON SYSTEM =====
+  // ===== COUPON HANDLING =====
   const applyCoupon = () => {
     const code = couponCode.trim().toUpperCase();
     if (code === "OFF10") {
       setAppliedCoupon({ code: "OFF10", discount: getCartTotal() * 0.1 });
-      alert("✅ 10% discount applied!");
+      Alert.alert("✅ 10% discount applied!");
     } else if (code === "SAVE50") {
       setAppliedCoupon({ code: "SAVE50", discount: 50 });
-      alert("✅ ₹50 discount applied!");
+      Alert.alert("✅ ₹50 discount applied!");
     } else {
-      alert("❌ Invalid coupon code");
+      Alert.alert("❌ Invalid coupon code");
     }
     setCouponCode("");
   };
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
-    alert("🗑️ Coupon removed");
+    Alert.alert("🗑️ Coupon removed");
   };
 
   const getFinalTotal = () => {
@@ -207,10 +197,9 @@ export default function App() {
 
   // ===== AUTH FLOW =====
   if (!isAuthenticated) {
-    if (isFirstTime && authScreen === "welcome") {
+    if (isFirstTime && authScreen === "welcome")
       return <WelcomeScreen onComplete={handleWelcomeComplete} />;
-    }
-    if (authScreen === "signin") {
+    if (authScreen === "signin")
       return (
         <SignInScreen
           onSignIn={handleSignIn}
@@ -218,7 +207,6 @@ export default function App() {
           isLoading={isLoading}
         />
       );
-    }
     return (
       <SignUpScreen
         onSignUp={handleSignUp}
@@ -228,76 +216,59 @@ export default function App() {
     );
   }
 
-  // ===== MAIN RENDER FUNCTION =====
+  // ===== MAIN CONTENT RENDER =====
   const renderScreen = () => {
     if (activeScreen === "food") {
       if (foodView === "restaurants")
         return (
-          <FoodRestaurants
-            onNavigate={handleNavigation}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            filteredRestaurants={restaurants.filter((r) =>
-              r.name.toLowerCase().includes(searchTerm.toLowerCase())
-            )}
-            handleRestaurantClick={handleRestaurantClick}
+          <RestaurantList
+            onNavigate={setActiveScreen}
+            onRestaurantSelect={handleRestaurantClick}
           />
         );
-
       if (foodView === "menu")
         return (
           <FoodMenu
-            selectedRestaurant={selectedRestaurant}
-            filteredMenuItems={menuItems}
+            restaurant={selectedRestaurant}
             cart={cart}
-            addToCart={addToCart}
-            removeFromCart={removeFromCart}
+            onBack={handleFoodBack}
+            onAddToCart={addToCart}
+            onRemoveFromCart={removeFromCart}
+            onCheckout={handleCheckout}
             getItemQuantity={getItemQuantity}
             getCartTotal={getCartTotal}
-            handleCheckout={handleCheckout}
-            handleBack={handleFoodBack}
           />
         );
-
       if (foodView === "checkout")
         return (
           <FoodCheckout
-            selectedRestaurant={selectedRestaurant}
+            restaurant={selectedRestaurant}
             cart={cart}
-            handleBack={handleFoodBack}
+            onBack={handleFoodBack}
+            onPlaceOrder={handlePlaceOrder}
             getCartTotal={getCartTotal}
-            getFinalTotal={getFinalTotal}
-            applyCoupon={applyCoupon}
-            removeCoupon={removeCoupon}
-            couponCode={couponCode}
-            setCouponCode={setCouponCode}
-            appliedCoupon={appliedCoupon}
-            handlePlaceOrder={handlePlaceOrder}
           />
         );
-
       if (foodView === "tracking")
-        return <FoodTracking handleBack={handleFoodBack} />; // ✅ New tracking map
+        return <FoodTracking restaurant={selectedRestaurant} onBack={handleFoodBack} />;
     }
 
     const screens = {
-      home: <HomeScreen onNavigate={handleNavigation} />,
-      chat: <ChatScreen onNavigate={handleNavigation} />,
-      orders: <OrdersScreen onNavigate={handleNavigation} />,
-      profile: (
-        <ProfileScreen onNavigate={handleNavigation} onSignOut={handleSignOut} />
-      ),
-      payments: <PaymentsScreen onNavigate={handleNavigation} />,
-      grocery: <GroceryScreen onNavigate={handleNavigation} />,
-      medicine: <MedicineScreen onNavigate={handleNavigation} />,
-      ride: <RideScreen onNavigate={handleNavigation} />,
-      "home-services": <HomeServicesScreen onNavigate={handleNavigation} />,
-      subscriptions: <SubscriptionsScreen onNavigate={handleNavigation} />,
+      home: <HomeScreen onNavigate={setActiveScreen} />,
+      chat: <ChatScreen onNavigate={setActiveScreen} />,
+      orders: <OrdersScreen onNavigate={setActiveScreen} />,
+      profile: <ProfileScreen onNavigate={setActiveScreen} onSignOut={handleSignOut} />,
+      payments: <PaymentsScreen onNavigate={setActiveScreen} />,
+      grocery: <GroceryScreen onNavigate={setActiveScreen} />,
+      medicine: <MedicineScreen onNavigate={setActiveScreen} />,
+      ride: <RideScreen onNavigate={setActiveScreen} />,
+      "home-services": <HomeServicesScreen onNavigate={setActiveScreen} />,
+      subscriptions: <SubscriptionsScreen onNavigate={setActiveScreen} />,
     };
     return screens[activeScreen] || screens.home;
   };
 
-  // ===== NAV ITEMS =====
+  // ===== NAV BAR =====
   const navItems = [
     { id: "home", icon: Home, label: "Home" },
     { id: "chat", icon: MessageCircle, label: "Chat" },
@@ -305,7 +276,7 @@ export default function App() {
     { id: "profile", icon: User, label: "Profile" },
   ];
 
-  // ===== RENDER APP =====
+  // ===== APP LAYOUT =====
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -325,10 +296,15 @@ export default function App() {
               <TouchableOpacity
                 key={item.id}
                 style={styles.navItem}
-                onPress={() => handleNavigation(item.id)}
+                onPress={() => setActiveScreen(item.id)}
               >
                 <Icon color={isActive ? "#007bff" : "#777"} size={24} />
-                <Text style={[styles.navLabel, { color: isActive ? "#007bff" : "#777" }]}>
+                <Text
+                  style={[
+                    styles.navLabel,
+                    { color: isActive ? "#007bff" : "#777" },
+                  ]}
+                >
                   {item.label}
                 </Text>
               </TouchableOpacity>
