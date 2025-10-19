@@ -51,7 +51,7 @@ axiosInstance.interceptors.request.use(
   async (config) => {
     const token = TokenService.getToken();
     if (token) {
-      config.headers["Authorization"] = `Token ${token}`;
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
     return config;
   },
