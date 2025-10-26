@@ -16,9 +16,10 @@ import { ArrowRight } from "lucide-react-native";
 import { register } from "../../store/auth/authThunk";
 import { toast } from "react-toastify"; // optional: replace with RN Toast
 import { postAPI } from "../axios/utils";
+import TokenService from "../axios/tokenService";
 import { useAppDispatch } from "../../store/hook";
 
-const SignUpScreen = ({ onNavigateToSignIn }) => {
+const SignUpScreen = ({ onNavigateToSignIn, onSignUp }) => {
   const dispatch = useAppDispatch();
   const [formData, setFormData] = useState({
     firstName: "",
@@ -65,7 +66,7 @@ const SignUpScreen = ({ onNavigateToSignIn }) => {
           ? [apiHostOverride.trim(), ...defaultHosts]
           : defaultHosts;
 
-        const payload = {
+        const payload = { 
           first_name: formData.firstName,
           last_name: formData.lastName,
           phone_number: formData.phoneNumber,
@@ -80,7 +81,7 @@ const SignUpScreen = ({ onNavigateToSignIn }) => {
           const url = `http://192.168.1.7:8000/api/users/register2/`;
           console.log("Attempting Send OTP to:", url);
           try {
-            const resp = await fetch(url, {
+            const resp = await fetch(url, { 
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(payload),
@@ -125,20 +126,73 @@ const SignUpScreen = ({ onNavigateToSignIn }) => {
       return;
     }
 
-    if (formData.password !== formData.password1) {
-      toast.error("Passwords do not match!");
-      return;
-    }
-
+    // Verify OTP and complete signup
     setIsLoading(true);
     try {
-      const result = await dispatch(register(formData)).unwrap();
-      console.log("Registration result:", result);
-      toast.info("Registration successful!");
-      onNavigateToSignIn();
+      const defaultHosts = Platform.OS === "android"
+        ? ["10.0.2.2", "10.0.3.2", "127.0.0.1"]
+        : ["127.0.0.1"];
+      const hosts = apiHostOverride && apiHostOverride.trim().length > 0
+        ? [apiHostOverride.trim(), ...defaultHosts]
+        : defaultHosts;
+
+      let verified = false;
+      let lastErr = null;
+
+      for (const host of hosts) {
+        const url = `http://192.168.1.7:8000/api/users/Signin2/verify/`;
+        console.log("Attempting Verify OTP to:", url);
+        try {
+            const resp = await fetch(url, { 
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone_number: formData.phoneNumber, otp }),
+          });
+
+          const text = await resp.text().catch(() => null);
+          if (!resp.ok) {
+            console.warn(`Verify responded ${resp.status} for ${url}:`, text);
+            lastErr = new Error(`Server ${resp.status}: ${text || resp.statusText}`);
+            // do not try other hosts if server responded with HTTP error
+            break;
+          }
+
+          const data = (() => {
+            try { return JSON.parse(text || "null"); } catch { return null; }
+          })();
+
+          console.log("Verify response data:", data || text);
+
+          // attempt to extract token from common keys
+          const access = data?.tokens?.access || data?.access || data?.token || data?.auth_token || data?.key || null;
+          const refresh = data?.tokens?.refresh || data?.refresh || null;
+          if (access) {
+            try { TokenService.setToken(access); } catch (e) { console.warn("TokenService.setToken failed", e); }
+          }
+          // Optionally store refresh token somewhere if needed
+          // (refresh token handling can be added here if desired)
+
+          toast.info("Verified — signing you in...");
+          // invoke parent handler to mark authenticated and show home
+          if (typeof onSignUp === "function") onSignUp();
+
+          verified = true;
+          break;
+        } catch (err) {
+          lastErr = err;
+          console.warn(`Verify attempt to ${host} failed:`, err?.message || err);
+          const msg = (err?.message || "").toLowerCase();
+          if (!msg.includes("network") && !msg.includes("failed")) break;
+        }
+      }
+
+      if (!verified) {
+        console.error("Verify failed (all attempts):", lastErr);
+        toast.error("Failed to verify OTP. Ensure backend is reachable and the code is correct.");
+      }
     } catch (error) {
-      console.error("Registration failed:", error);
-      toast.error("Registration failed. Please try again.");
+      console.error("Verify unexpected error:", error);
+      toast.error("Failed to verify OTP. Please try again.");
     } finally {
       setIsLoading(false);
     }
