@@ -5,7 +5,7 @@ export const BASE_URL = `${BASE_PROTOCOL}://${BASE_HOST}`;
 export const WS_BASE_URL = `${BASE_PROTOCOL_WS}://${BASE_HOST}`;
 export const TESTING = true;
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyC-bqnjCFZ82yl51ys00XkNmd-vLxHSVQE';
-export const BASE_HOST2 = `localhost:8000`;
+export const BASE_HOST2 = `192.168.1.7:8000`;
 export const BASE_URL2 = `${BASE_PROTOCOL}://${BASE_HOST2}`;
 
 // Mock alerts data

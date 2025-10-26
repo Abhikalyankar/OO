@@ -18,11 +18,17 @@ import {
   Mail,
   ArrowRight,
 } from "lucide-react-native";
+// import { ArrowRight } from "lucide-react-native";
+import { toast } from "react-toastify"; // optional: replace with RN Toast
+import { postAPI } from "../axios/utils";
+import TokenService from "../axios/tokenService";
+import { useAppDispatch } from "../../store/hook";
+import { login } from "../../store/auth/authThunk";
 
 export default function SignInScreen({
   onSignIn,
   onNavigateToSignUp,
-  isLoading = false,
+  isLoading: externalIsLoading = false,
 }) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
@@ -32,6 +38,8 @@ export default function SignInScreen({
   const [otp, setOtp] = useState("");
   const [activeTab, setActiveTab] = useState("phone");
   const [formErrors, setFormErrors] = useState({});
+  const dispatch = useAppDispatch();
+  const [isLoading, setIsLoading] = useState(externalIsLoading);
 
   const validateField = (field, value) => {
     const errors = { ...formErrors };
@@ -57,9 +65,31 @@ export default function SignInScreen({
 
   const handlePhoneSignIn = async () => {
     if (phoneNumber && !otpSent) {
+      // show OTP entry UI; sending OTP should be done by backend/register flow
       setOtpSent(true);
-    } else if (otp) {
-      await onSignIn();
+      return;
+    }
+
+    if (otp) {
+      setIsLoading(true);
+      try {
+        // dispatch login thunk which calls the verify endpoint
+        const resp = await dispatch(login({ phone_number: "+91"+phoneNumber, otp })).unwrap();
+        // authThunk returns axios response; tokens may be in resp.data.tokens
+        const data = resp?.data || resp;
+        console.log('Login response data21:', data);
+        const access = data?.tokens?.access || data?.access || data?.token || data?.auth_token || null;
+        if (access) {
+          try { TokenService.setToken(access); } catch (e) { console.warn('TokenService.setToken failed', e); }
+        }
+        toast.info('Signed in');
+        await onSignIn();
+      } catch (err) {
+        console.error('Sign in failed:', err);
+        toast.error('Sign in failed. Please check OTP and try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 

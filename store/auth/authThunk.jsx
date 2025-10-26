@@ -5,13 +5,14 @@ import { logToLocalStorage } from "../../app/utils/logger";
 
 export const login = createAsyncThunk("auth/login", async (data, thunkAPI) => {
   console.log("Login request data1:", data.data);
-  logToLocalStorage("Login request data1", data);
+  console.log("Login request data2:", data);
+//   logToLocalStorage("Login request data1", data);
   console.log("Login request 001", data);
   try {
-    const resp = await postAPI(`${BASE_URL2}/get-token/`, {
+    const resp = await postAPI(`${BASE_URL2}/api/users/Signin2/verify/`, {
       ...data,
     });
-    logToLocalStorage("after login", data);
+    // logToLocalStorage("after login", data);
     console.log("after login:", resp);
     return resp;
   } catch (error) {
