@@ -7,6 +7,8 @@ import {
   User,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
+// debug: log when this module is loaded and when App renders
+console.log("app/index.jsx module loaded");
 import {
   Animated,
   Easing,
@@ -43,6 +45,7 @@ import FoodCheckout from "./components/food/FoodCheckout";
 import FoodTracking from "./components/food/FoodTracking";
 
 export default function App() {
+  console.log("app/index.jsx App render");
   // ===== GLOBAL STATES =====
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(true);

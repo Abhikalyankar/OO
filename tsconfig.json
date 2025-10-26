@@ -13,5 +13,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-, "app/index.jsx", "app/_layout.jsx", "app/components/food/RestaurantList.jsx"  ]
+, "app/index.jsx", "app/_layout.jsx", "app/components/food/RestaurantList.jsx", "app/store/auth/authSlice.jsx", "app/store/hook.jsx", "app/store/auth/authThunk.jsx", "app/utils/sxStyle.jsx", "app/utils/logger.jsx", "app/utils/helper.jsx", "app/utils/constants.jsx", "app/axios/notificationService.jsx", "app/axios/index.jsx", "app/axios/tokenService.jsx", "app/axios/utils.jsx"  ]
 }

@@ -9,60 +9,85 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
-import {
-  Eye,
-  EyeOff,
-  Phone,
-  Mail,
-  ArrowRight,
-  User,
-  MapPin,
-} from "lucide-react-native";
+import { ArrowRight } from "lucide-react-native";
+// import { useAppDispatch } from "../store"; // your typed dispatch
+import { register } from "../../store/auth/authThunk";
+import { toast } from "react-toastify"; // optional: replace with RN Toast
+import { postAPI } from "../axios/utils";
+import { useAppDispatch } from "../../store/hook";
 
-export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
-  const [activeTab, setActiveTab] = useState("phone");
+const SignUpScreen = ({ onNavigateToSignIn }) => {
+  const dispatch = useAppDispatch();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     phoneNumber: "",
     email: "",
-    // password: "",
-    // confirmPassword: "",
     city: "",
+    // password: "",
+    // password1: "",
     agreeToTerms: false,
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handlePhoneSignUp = () => {
-    if (formData.phoneNumber && formData.firstName && !otpSent) {
-      setOtpSent(true);
-    } else if (otp) {
-      onSignUp();
+  const handlePhoneSignUp = async () => {
+    if (!otpSent) {
+      // send OTP / start registration flow (server: /api/users/register2/)
+      if (!formData.phoneNumber || !formData.firstName) {
+        toast.error("Please enter first name and phone number to continue");
+        return;
+      }
+      setIsLoading(true);
+      try {
+  // Choose host depending on platform. Android emulator should use 10.0.2.2
+  const host = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
+  const url = `http://127.0.0.1:8000/api/users/register2/`;
+  console.log("Sending OTP to:", url);
+        const payload = {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phoneNumber,
+          email: formData.email,
+        };
+        const resp = await postAPI(url, payload);
+        console.log("OTP/send response:", resp);
+        toast.info("OTP sent. Please enter the code to verify.");
+        setOtpSent(true);
+      } catch (error) {
+        console.error("Send OTP failed:", error);
+        toast.error("Failed to send OTP. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+      return;
     }
-  };
 
-  const handleEmailSignUp = () => {
-    if (isEmailFormValid()) {
-      onSignUp();
+    if (formData.password !== formData.password1) {
+      toast.error("Passwords do not match!");
+      return;
     }
-  };
 
-  const isEmailFormValid = () => {
-    return (
-      formData.firstName &&
-      formData.email &&
-      formData.password &&
-      formData.confirmPassword === formData.password &&
-      formData.agreeToTerms
-    );
+    setIsLoading(true);
+    try {
+      const result = await dispatch(register(formData)).unwrap();
+      console.log("Registration result:", result);
+      toast.info("Registration successful!");
+      onNavigateToSignIn();
+    } catch (error) {
+      console.error("Registration failed:", error);
+      toast.error("Registration failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -71,11 +96,7 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingVertical: 20 }}
-        >
-          {/* Logo */}
+        <ScrollView contentContainerStyle={{ paddingVertical: 20 }}>
           <View style={styles.logoContainer}>
             <View style={styles.logoOuter}>
               <View style={styles.logoInner}>
@@ -86,158 +107,7 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
             <Text style={styles.subtitle}>Create your account to get started</Text>
           </View>
 
-          {/* Tabs
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === "phone" && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab("phone")}
-            >
-              <Phone size={18} color={activeTab === "phone" ? "#007bff" : "#6b7280"} />
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "phone" && styles.activeTabText,
-                ]}
-              >
-                Phone
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === "email" && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab("email")}
-            >
-              <Mail size={18} color={activeTab === "email" ? "#007bff" : "#6b7280"} />
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "email" && styles.activeTabText,
-                ]}
-              >
-                Email
-              </Text>
-            </TouchableOpacity>
-          </View> */}
-
-          {/* === PHONE SIGN UP === */}
-          {activeTab === "phone" && (
-            <View style={styles.form}>
-              {!otpSent ? (
-                <>
-                  <View style={styles.row}>
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>First Name</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="First name"
-                        value={formData.firstName}
-                        onChangeText={(t) => handleInputChange("firstName", t)}
-                      />
-                    </View>
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Last Name</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Last name"
-                        value={formData.lastName}
-                        onChangeText={(t) => handleInputChange("lastName", t)}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Phone Number</Text>
-                    <View style={styles.phoneRow}>
-                      <View style={styles.countryCode}>
-                        <Text style={{ color: "#6b7280" }}>+91</Text>
-                      </View>
-                      <TextInput
-                        style={[styles.input, { flex: 1 }]}
-                        placeholder="Enter phone number"
-                        keyboardType="number-pad"
-                        maxLength={10}
-                        value={formData.phoneNumber}
-                        onChangeText={(t) => handleInputChange("phoneNumber", t)}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Email</Text>
-                    <View style={styles.phoneRow}>
-                      {/* <View style={styles.countryCode}>
-                        <Text style={{ color: "#6b7280" }}>+91</Text>
-                      </View> */}
-                      <TextInput
-                        style={[styles.input, { flex: 1 }]}
-                        placeholder="Enter email"
-                        keyboardType="email"
-                        maxLength={10}
-                        value={formData.email}
-                        onChangeText={(t) => handleInputChange("email", t)}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>City</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your city"
-                      value={formData.city}
-                      onChangeText={(t) => handleInputChange("city", t)}
-                    />
-                  </View>
-                </>
-              ) : (
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Enter OTP</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="6-digit OTP"
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    value={otp}
-                    onChangeText={setOtp}
-                  />
-                  <Text style={styles.helperText}>
-                    OTP sent to +91 {formData.phoneNumber}
-                  </Text>
-                  <TouchableOpacity onPress={() => setOtpSent(false)}>
-                    <Text style={styles.linkText}>Change details</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  (!formData.phoneNumber || !formData.firstName) &&
-                    !otpSent &&
-                    styles.buttonDisabled,
-                ]}
-                onPress={handlePhoneSignUp}
-                disabled={
-                  ((!formData.phoneNumber || !formData.firstName) &&
-                    !otpSent) ||
-                  (otpSent && !otp)
-                }
-              >
-                <Text style={styles.buttonText}>
-                  {!otpSent ? "Send OTP" : "Verify & Create Account"}
-                </Text>
-                <ArrowRight color="#fff" size={18} />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          === EMAIL SIGN UP ===
-          {activeTab === "email" && (
+          {!otpSent ? (
             <View style={styles.form}>
               <View style={styles.row}>
                 <View style={styles.inputContainer}>
@@ -261,65 +131,31 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
               </View>
 
               <View style={styles.inputContainer}>
+                <Text style={styles.label}>Phone Number</Text>
+                <View style={styles.phoneRow}>
+                  <View style={styles.countryCode}>
+                    <Text style={{ color: "#6b7280" }}>+91</Text>
+                  </View>
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    placeholder="Enter phone number"
+                    keyboardType="number-pad"
+                    maxLength={10}
+                    value={formData.phoneNumber}
+                    onChangeText={(t) => handleInputChange("phoneNumber", t)}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
                 <Text style={styles.label}>Email</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your email"
+                  placeholder="Enter email"
                   keyboardType="email-address"
                   value={formData.email}
                   onChangeText={(t) => handleInputChange("email", t)}
                 />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
-                <View style={styles.passwordRow}>
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder="Create password"
-                    secureTextEntry={!showPassword}
-                    value={formData.password}
-                    onChangeText={(t) => handleInputChange("password", t)}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color="#6b7280" />
-                    ) : (
-                      <Eye size={20} color="#6b7280" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Confirm Password</Text>
-                <View style={styles.passwordRow}>
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder="Confirm password"
-                    secureTextEntry={!showConfirmPassword}
-                    value={formData.confirmPassword}
-                    onChangeText={(t) => handleInputChange("confirmPassword", t)}
-                  />
-                  <TouchableOpacity
-                    onPress={() =>
-                      setShowConfirmPassword(!showConfirmPassword)
-                    }
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={20} color="#6b7280" />
-                    ) : (
-                      <Eye size={20} color="#6b7280" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-                {formData.password &&
-                  formData.confirmPassword &&
-                  formData.password !== formData.confirmPassword && (
-                    <Text style={styles.errorText}>Passwords don't match</Text>
-                  )}
               </View>
 
               <View style={styles.inputContainer}>
@@ -332,21 +168,68 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
                 />
               </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  !isEmailFormValid() && styles.buttonDisabled,
-                ]}
-                onPress={handleEmailSignUp}
-                disabled={!isEmailFormValid()}
-              >
-                <Text style={styles.buttonText}>Create Account</Text>
-                <ArrowRight color="#fff" size={18} />
+              {/* <View style={styles.inputContainer}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  secureTextEntry
+                  value={formData.password}
+                  onChangeText={(t) => handleInputChange("password", t)}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Confirm Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm password"
+                  secureTextEntry
+                  value={formData.password1}
+                  onChangeText={(t) => handleInputChange("password1", t)}
+                />
+              </View> */}
+            </View>
+          ) : (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Enter OTP</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="6-digit OTP"
+                keyboardType="number-pad"
+                maxLength={6}
+                value={otp}
+                onChangeText={setOtp}
+              />
+              <Text style={styles.helperText}>
+                OTP sent to +91 {formData.phoneNumber}
+              </Text>
+              <TouchableOpacity onPress={() => setOtpSent(false)}>
+                <Text style={styles.linkText}>Change details</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Already have account */}
+          <TouchableOpacity
+            style={[
+              styles.button,
+              (!formData.phoneNumber || !formData.firstName) && !otpSent && styles.buttonDisabled,
+            ]}
+            onPress={handlePhoneSignUp}
+            disabled={((!formData.phoneNumber || !formData.firstName) && !otpSent) || isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>
+                  {!otpSent ? "Send OTP" : "Verify & Create Account"}
+                </Text>
+                <ArrowRight color="#fff" size={18} />
+              </>
+            )}
+          </TouchableOpacity>
+
           <View style={styles.signInContainer}>
             <Text style={styles.signInText}>Already have an account?</Text>
             <TouchableOpacity onPress={onNavigateToSignIn}>
@@ -354,7 +237,6 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
             </TouchableOpacity>
           </View>
 
-          {/* Terms */}
           <Text style={styles.termsText}>
             By creating an account, you agree to our{" "}
             <Text style={styles.linkText}>Terms of Service</Text> and{" "}
@@ -364,115 +246,60 @@ export default function SignUpScreen({ onSignUp, onNavigateToSignIn }) {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-}
+};
+
+export default SignUpScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" ,paddingTop:10},
+  container: { flex: 1, backgroundColor: "#f8fafc" },
   logoContainer: { alignItems: "center", marginBottom: 20 },
   logoOuter: {
-    width: 70,
-    height: 70,
-    backgroundColor: "#007bff",
-    borderRadius: 35,
-    justifyContent: "center",
+    height: 80,
+    width: 80,
+    borderRadius: 40,
+    backgroundColor: "#fff",
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "center",
+    elevation: 4,
   },
   logoInner: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    justifyContent: "center",
+    height: 56,
+    width: 56,
+    borderRadius: 28,
+    backgroundColor: "#007bff",
     alignItems: "center",
-  },
-  logoDot: { width: 20, height: 20, backgroundColor: "#007bff", borderRadius: 10 },
-  title: { fontSize: 22, fontWeight: "700", color: "#111827" },
-  subtitle: { fontSize: 14, color: "#6b7280" },
-  tabContainer: {
-    flexDirection: "row",
-    backgroundColor: "#e5e7eb",
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    flexDirection: "row",
     justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 12,
   },
-  activeTab: {
-    backgroundColor: "#fff",
-  },
-  tabText: {
-    marginLeft: 6,
-    color: "#6b7280",
-    fontWeight: "500",
-  },
-  activeTabText: {
-    color: "#007bff",
-  },
-  form: { paddingHorizontal: 20 },
+  logoDot: { height: 12, width: 12, borderRadius: 6, backgroundColor: "#fff" },
+  title: { fontSize: 20, fontWeight: "700", marginTop: 10 },
+  subtitle: { color: "#6b7280", marginTop: 4 },
+  form: { paddingHorizontal: 16 },
+  row: { flexDirection: "row", justifyContent: "space-between" },
   inputContainer: { marginBottom: 12 },
-  label: { fontSize: 14, color: "#374151", marginBottom: 4 },
+  label: { marginBottom: 6, color: "#374151" },
   input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#111827",
     backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
   },
   phoneRow: { flexDirection: "row", alignItems: "center" },
-  countryCode: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRightWidth: 0,
-    borderRadius: 8,
-    borderTopRightRadius: 0,
-    borderBottomRightRadius: 0,
-    backgroundColor: "#f3f4f6",
-  },
-  passwordRow: { flexDirection: "row", alignItems: "center" },
+  countryCode: { paddingHorizontal: 12, justifyContent: "center" },
+  helperText: { color: "#6b7280", marginTop: 6 },
+  linkText: { color: "#007bff" },
   button: {
-    backgroundColor: "#007bff",
-    borderRadius: 10,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 12,
-    marginTop: 10,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
-    marginRight: 8,
-    fontSize: 16,
-  },
-  helperText: { color: "#6b7280", fontSize: 12, marginTop: 4 },
-  linkText: { color: "#007bff", fontWeight: "500" },
-  errorText: { color: "#ef4444", fontSize: 12, marginTop: 4 },
-  row: { flexDirection: "row", justifyContent: "space-between" },
-  signInContainer: {
-    flexDirection: "row",
     justifyContent: "center",
-    marginTop: 20,
+    backgroundColor: "#007bff",
+    padding: 12,
+    margin: 16,
+    borderRadius: 8,
   },
-  signInText: { color: "#6b7280", fontSize: 14 },
-  termsText: {
-    textAlign: "center",
-    fontSize: 12,
-    color: "#6b7280",
-    marginTop: 20,
-    paddingHorizontal: 30,
-    lineHeight: 18,
-  },
+  buttonDisabled: { backgroundColor: "#9ca3af" },
+  buttonText: { color: "#fff", fontWeight: "700", marginRight: 8 },
+  signInContainer: { flexDirection: "row", justifyContent: "center", marginTop: 8 },
+  signInText: { color: "#6b7280" },
+  termsText: { textAlign: "center", color: "#6b7280", marginTop: 12 },
 });
