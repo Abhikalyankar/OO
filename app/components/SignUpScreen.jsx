@@ -28,12 +28,20 @@ const SignUpScreen = ({ onNavigateToSignIn }) => {
     city: "",
     // password: "",
     // password1: "",
-    agreeToTerms: false,
+    // agreeToTerms: false,
   });
 
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [apiHostOverride, setApiHostOverride] = useState("");
+  const [debugLogs, setDebugLogs] = useState([]);
+
+  const addDebugLog = (txt) => {
+    const ts = new Date().toLocaleTimeString();
+    setDebugLogs((s) => [{ ts, txt }, ...s].slice(0, 200));
+    console.log(`[TEST-CONN ${ts}]`, txt);
+  };
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -48,22 +56,68 @@ const SignUpScreen = ({ onNavigateToSignIn }) => {
       }
       setIsLoading(true);
       try {
-  // Choose host depending on platform. Android emulator should use 10.0.2.2
-  const host = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
-  const url = `http://127.0.0.1:8000/api/users/register2/`;
-  console.log("Sending OTP to:", url);
+        // Try multiple hosts to increase chance of reaching backend from emulators/devices.
+        const defaultHosts = Platform.OS === "android"
+          ? ["10.0.2.2", "10.0.3.2", "127.0.0.1"]
+          : ["127.0.0.1"];
+
+        const hosts = apiHostOverride && apiHostOverride.trim().length > 0
+          ? [apiHostOverride.trim(), ...defaultHosts]
+          : defaultHosts;
+
         const payload = {
           first_name: formData.firstName,
           last_name: formData.lastName,
-          phone: formData.phoneNumber,
+          phone_number: formData.phoneNumber,
           email: formData.email,
+          city: formData.city,
         };
-        const resp = await postAPI(url, payload);
-        console.log("OTP/send response:", resp);
-        toast.info("OTP sent. Please enter the code to verify.");
-        setOtpSent(true);
+
+        let didSucceed = false;
+        let lastErr = null;
+
+        for (const host of hosts) {
+          const url = `http://192.168.1.7:8000/api/users/register2/`;
+          console.log("Attempting Send OTP to:", url);
+          try {
+            const resp = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            // Treat non-2xx as failure but still parse to surface message
+            if (!resp.ok) {
+              const text = await resp.text().catch(() => null);
+              console.warn(`Server responded ${resp.status} for ${url}:`, text);
+              lastErr = new Error(`Server ${resp.status}: ${text || resp.statusText}`);
+              // do not retry other hosts if server returned an HTTP error
+              break;
+            }
+
+            const data = await resp.json().catch(() => null);
+            console.log("OTP/send response data:", data || resp);
+            toast.info("OTP sent. Please enter the code to verify.");
+            setOtpSent(true);
+            didSucceed = true;
+            break;
+          } catch (err) {
+            lastErr = err;
+            console.warn(`Send OTP attempt to ${host} failed:`, err?.message || err);
+            // if network error, try next host; otherwise break
+            const msg = (err?.message || "").toLowerCase();
+            if (!msg.includes("network") && !msg.includes("failed")) {
+              break;
+            }
+          }
+        }
+
+        if (!didSucceed) {
+          console.error("Send OTP failed (all attempts):", lastErr);
+          toast.error("Failed to send OTP. Ensure backend is running and reachable from the device.");
+        }
       } catch (error) {
-        console.error("Send OTP failed:", error);
+        console.error("Send OTP unexpected error:", error);
         toast.error("Failed to send OTP. Please try again.");
       } finally {
         setIsLoading(false);
@@ -105,6 +159,71 @@ const SignUpScreen = ({ onNavigateToSignIn }) => {
             </View>
             <Text style={styles.title}>Join SuperApp!</Text>
             <Text style={styles.subtitle}>Create your account to get started</Text>
+            {/* Optional API host override (enter machine LAN IP or emulator host) */}
+            <View style={{ width: "100%", paddingHorizontal: 16, marginTop: 8 }}>
+              <Text style={{ color: "#374151", marginBottom: 6, fontSize: 12 }}>API Host (optional)</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: "#fff" }]}
+                placeholder="e.g. 192.168.1.100 or 10.0.2.2"
+                value={apiHostOverride}
+                onChangeText={setApiHostOverride}
+                autoCapitalize="none"
+              />
+            </View>
+              <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: "#10b981", paddingVertical: 10, margin: 0 }]}
+                  onPress={async () => {
+                    // Run test connection flow
+                    const defaultHosts = Platform.OS === "android"
+                      ? ["10.0.2.2", "10.0.3.2", "127.0.0.1"]
+                      : ["127.0.0.1"];
+                    const hosts = apiHostOverride && apiHostOverride.trim().length > 0
+                      ? [apiHostOverride.trim(), ...defaultHosts]
+                      : defaultHosts;
+
+                    addDebugLog(`Starting test for hosts: ${hosts.join(", ")}`);
+
+                    for (const host of hosts) {
+                      const urlRoot = `http://${host}:8000/`;
+                      const urlPing = `http://${host}:8000/api/users/register2/`;
+
+                      // 1) quick GET to root
+                      addDebugLog(`GET ${urlRoot}`);
+                      try {
+                        const resp = await fetch(urlRoot, { method: "GET" });
+                        const text = await resp.text().catch(() => "<no-body>");
+                        addDebugLog(`GET ${urlRoot} -> ${resp.status} ${resp.statusText} | body: ${text.substring(0, 1000)}`);
+                      } catch (err) {
+                        addDebugLog(`GET ${urlRoot} ERROR: ${err?.message || err}`);
+                      }
+
+                      // 2) Try POST to register2 (to match OTP endpoint) but do not send real data
+                      addDebugLog(`POST ${urlPing}`);
+                      try {
+                        const resp = await fetch(urlPing, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ test: true }),
+                        });
+                        const text = await resp.text().catch(() => "<no-body>");
+                        addDebugLog(`POST ${urlPing} -> ${resp.status} ${resp.statusText} | body: ${text.substring(0, 1000)}`);
+                      } catch (err) {
+                        addDebugLog(`POST ${urlPing} ERROR: ${err?.message || err}`);
+                      }
+                    }
+                    addDebugLog("Test completed.");
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700" }}>Test connection</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: "#6b7280", paddingVertical: 10, marginTop: 8, margin: 0 }]}
+                  onPress={() => setDebugLogs([])}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700" }}>Clear logs</Text>
+                </TouchableOpacity>
+              </View>
           </View>
 
           {!otpSent ? (
@@ -167,6 +286,21 @@ const SignUpScreen = ({ onNavigateToSignIn }) => {
                   onChangeText={(t) => handleInputChange("city", t)}
                 />
               </View>
+
+              {/* Debug panel: show recent logs */}
+              {debugLogs.length > 0 && (
+                <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+                  <Text style={{ color: "#374151", marginBottom: 6, fontSize: 12 }}>Connection logs</Text>
+                  <ScrollView style={{ maxHeight: 160, backgroundColor: "#fff", borderRadius: 8, padding: 8 }}>
+                    {debugLogs.map((l, idx) => (
+                      <View key={idx} style={{ marginBottom: 8 }}>
+                        <Text style={{ fontSize: 11, color: "#6b7280" }}>[{l.ts}]</Text>
+                        <Text style={{ fontSize: 12 }}>{l.txt}</Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
               {/* <View style={styles.inputContainer}>
                 <Text style={styles.label}>Password</Text>
