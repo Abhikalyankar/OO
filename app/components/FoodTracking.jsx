@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from "react-native";
+// react-native-maps is native-only and will break web builds if imported on web.
+// Load it conditionally at runtime only on native platforms.
+const isNative = Platform.OS !== "web";
 import * as Location from "expo-location";
 import { MotiView } from "moti";
 import { ArrowLeft, MapPin } from "lucide-react-native";
@@ -45,6 +47,27 @@ export default function FoodTracking({ handleBack }) {
     })();
   }, []);
 
+  // Dynamically import react-native-maps only on native platforms to avoid
+  // bundling native-only modules on web.
+  const [mapLib, setMapLib] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!isNative) return;
+      try {
+        const RNM = await import("react-native-maps");
+        if (!mounted) return;
+        const MV = RNM.default || RNM;
+        setMapLib({ MapView: MV, Marker: RNM.Marker, Polyline: RNM.Polyline });
+      } catch (e) {
+        console.warn("Failed to load react-native-maps:", e);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   if (loading || !userLocation || !deliveryLocation) {
     return (
       <View style={styles.centered}>
@@ -71,37 +94,52 @@ export default function FoodTracking({ handleBack }) {
         </View>
       </MotiView>
 
-      {/* Map */}
-      <MapView
-        style={styles.map}
-        initialRegion={{
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }}
-      >
-        {/* User Marker */}
-        <Marker coordinate={userLocation} title="You" pinColor="blue" />
+      {/* Map (conditionally render only on native platforms) */}
+      {isNative ? (
+        mapLib ? (
+          <mapLib.MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            }}
+          >
+            {/* User Marker */}
+            <mapLib.Marker coordinate={userLocation} title="You" pinColor="blue" />
 
-        {/* Delivery Boy Marker */}
-        <Marker
-          coordinate={deliveryLocation}
-          title="Delivery Partner"
-          pinColor="red"
-        >
-          <View style={styles.deliveryMarker}>
-            <MapPin color="white" size={18} />
+            {/* Delivery Boy Marker */}
+            <mapLib.Marker
+              coordinate={deliveryLocation}
+              title="Delivery Partner"
+              pinColor="red"
+            >
+              <View style={styles.deliveryMarker}>
+                <MapPin color="white" size={18} />
+              </View>
+            </mapLib.Marker>
+
+            {/* Route Line */}
+            <mapLib.Polyline
+              coordinates={[userLocation, deliveryLocation]}
+              strokeColor="#007bff"
+              strokeWidth={3}
+            />
+          </mapLib.MapView>
+        ) : (
+          <View style={styles.mapPlaceholder}>
+            <ActivityIndicator size="large" color="#007bff" />
+            <Text style={{ marginTop: 8 }}>Loading map library...</Text>
           </View>
-        </Marker>
-
-        {/* Route Line */}
-        <Polyline
-          coordinates={[userLocation, deliveryLocation]}
-          strokeColor="#007bff"
-          strokeWidth={3}
-        />
-      </MapView>
+        )
+      ) : (
+        <View style={styles.mapPlaceholder}>
+          <Text style={{ fontWeight: "600", marginBottom: 8 }}>Map is not available on web</Text>
+          <Text>Current location: {userLocation.latitude.toFixed(5)}, {userLocation.longitude.toFixed(5)}</Text>
+          <Text>Delivery location: {deliveryLocation.latitude.toFixed(5)}, {deliveryLocation.longitude.toFixed(5)}</Text>
+        </View>
+      )}
 
       {/* Delivery Status */}
       <View style={styles.statusBox}>
@@ -148,5 +186,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  mapPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
   },
 });
